@@ -7,25 +7,6 @@ import pickle
 # Initialize Login object
 login_obj = Login()
 
-# Token storage file
-TOKEN_FILE = "token.pkl"
-
-# Function to load token from a local file
-def load_token():
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "rb") as f:
-            return pickle.load(f)
-    return None
-
-# Function to save token to a local file
-def save_token(token):
-    with open(TOKEN_FILE, "wb") as f:
-        pickle.dump(token, f)
-
-# Load token at startup
-if "token" not in st.session_state:
-    st.session_state["token"] = load_token()
-
 # Streamlit App
 st.title("Login and Contract Viewer")
 
@@ -42,7 +23,6 @@ if st.button("Login"):
     if user_id and password and tpin:
         token = login_obj.login(user_id, password, tpin)
         st.session_state["token"] = token
-        save_token(token)  # Save token locally
         st.success("Login successful!")
     else:
         st.error("Please enter all credentials before logging in.")
@@ -54,14 +34,9 @@ token_input = st.text_input("Token", placeholder="Enter your token directly", ty
 if st.button("Set Token"):
     if token_input:
         st.session_state["token"] = token_input
-        save_token(token_input)  # Save token locally
         st.success("Token has been set successfully!")
     else:
         st.error("Please enter a token.")
-
-# Display token in a non-editable input box
-if st.session_state.get("token"):
-    st.text_input("Current Token", value=st.session_state["token"], disabled=True)
 
 # Contract button
 if st.button("Contract"):
