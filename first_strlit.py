@@ -1,24 +1,73 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+from login import Login
+import os
+import pickle
 
-st.title('This is my first app')
+# Initialize Login object
+login_obj = Login()
 
-DATE_COLUMN = 'date/time'
-DATA_URL = ('https://s3-us-west-2.amazonaws.com/'
-         'streamlit-demo-data/uber-raw-data-sep14.csv.gz')
-@st.cache_data
-def load_data(nrows):
-    data = pd.read_csv(DATA_URL, nrows=nrows)
-    lowercase = lambda x: str(x).lower()
-    data.rename(lowercase, axis='columns', inplace=True)
-    data[DATE_COLUMN] = pd.to_datetime(data[DATE_COLUMN])
-    return data
+# Token storage file
+TOKEN_FILE = "token.pkl"
 
-# Create a text element and let the reader know the data is loading.
-data_load_state = st.text('Loading data...')
-# Load 10,000 rows of data into the dataframe.
-data = load_data(10000)
-print(data)
-# Notify the reader that the data was successfully loaded.
-data_load_state.text("Done! (using st.cache_data)")
+# Function to load token from a local file
+def load_token():
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "rb") as f:
+            return pickle.load(f)
+    return None
+
+# Function to save token to a local file
+def save_token(token):
+    with open(TOKEN_FILE, "wb") as f:
+        pickle.dump(token, f)
+
+# Load token at startup
+if "token" not in st.session_state:
+    st.session_state["token"] = load_token()
+
+# Streamlit App
+st.title("Login and Contract Viewer")
+
+# Option to input token directly
+
+# Input boxes for user ID, password, and tpin
+user_id = st.text_input("User ID", placeholder="Enter your user ID")
+password = st.text_input("Password", placeholder="Enter your Password", type="password")
+tpin = st.text_input("Tpin", placeholder="Enter your Tpin")
+
+
+# Login logic
+if st.button("Login"):
+    if user_id and password and tpin:
+        token = login_obj.login(user_id, password, tpin)
+        st.session_state["token"] = token
+        save_token(token)  # Save token locally
+        st.success("Login successful!")
+    else:
+        st.error("Please enter all credentials before logging in.")
+
+st.title("OR Login with token")
+
+token_input = st.text_input("Token", placeholder="Enter your token directly", type="password")
+# Logic to set the token
+if st.button("Set Token"):
+    if token_input:
+        st.session_state["token"] = token_input
+        save_token(token_input)  # Save token locally
+        st.success("Token has been set successfully!")
+    else:
+        st.error("Please enter a token.")
+
+# Display token in a non-editable input box
+if st.session_state.get("token"):
+    st.text_input("Current Token", value=st.session_state["token"], disabled=True)
+
+# Contract button
+if st.button("Contract"):
+    if st.session_state.get("token"):
+        login_obj.generateContractFile(st.session_state["token"])
+        df = pd.read_csv("zerodha_contractfile.csv")
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.error("Please set a token or log in to view contract data.")
